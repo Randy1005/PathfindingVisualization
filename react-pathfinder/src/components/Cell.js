@@ -2,20 +2,21 @@ import React, {Component} from 'react';
 
 class Cell extends Component {
     constructor(props) {
-        super(props);
+        super(props);  
     }
 
     render() {
+
         return (
-            <svg viewBox="0 0 100 100" ref={(svg) => this.svg = svg}>
+            <svg width={this.props.rect.w} height={this.props.rect.h} ref={(svg) => this.svg = svg}>
                 <rect
-                    x={this.props.rect.x}
-                    y={this.props.rect.y}
+                    x="0"
+                    y="0"
                     width={this.props.rect.w}
                     height={this.props.rect.h}
                     stroke="black"
                     fill="white"
-                    stroke-width='0.1'
+                    strokeWidth='5'
                     ref={(e)=>this.svgRectEle = e}
                 />
             </svg>

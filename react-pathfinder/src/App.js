@@ -1,27 +1,34 @@
 import React, {Component} from 'react';
 import './App.css';
 import { Grid, AStarManager } from './components/Library';
-import { ButtonGroup } from './components/UI';
 
 class App extends Component {
 
     constructor() {
         super();
-        this.grid = new Grid(20, 50);
         this.manager = new AStarManager();
 
         this.state = {
-            grid: this.grid,
             manager: this.manager
         }
+
+        
     }
 
     render() {
         return (
             <React.Fragment>
-                {this.state.grid.render()}
-                <ButtonGroup/>
+                <div className="App">
+                    <g>
+                        <Grid rows={20} cols={50}></Grid>
+                    </g>
+                    <div>
+                        <button>RUN</button>
+                        <button>RESET</button>
+                    </div>
+                </div>
             </React.Fragment>
+            
 
         );
     }

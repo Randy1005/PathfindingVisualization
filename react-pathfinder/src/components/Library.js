@@ -46,9 +46,7 @@ export class Grid extends Component {
         if (event.type === 'mouseup') {
             this.mouseAction = null;
             this.cells[cellIdx].removeProperty(['active']);
-            this.setState({
-                cells: this.cells
-            });
+  
             return;
         }
         
@@ -61,14 +59,33 @@ export class Grid extends Component {
 
         if (this.mouseAction == null) {
             if (this.cells[cellIdx].getProperty('startPosition')) {
-                this.mouseAction = function(cellIdx) {
+                this.mouseAction = (cellIdx) =>  {
                     this.removeFromCells('startPosition');
-                    this.cells[cellIdx].setProperties({'startPosition': true});
-
+                    this.cells[cellIdx].setProperties({'startPosition': true});   
+                }
+            } else if (this.cells[cellIdx].getProperty('destination')) {
+                this.mouseAction = (cellIdx) => {
+                    this.removeFromCells('destination');
+                    this.cells[cellIdx].setProperties({'destination': true});
+                }
+            } else if (this.cells[cellIdx].getProperty('wall')) {
+                this.mouseAction = (cellIdx) => {
+                    this.cells[cellIdx].removeProperty(['wall']);
+                }
+            } else {
+                this.mouseAction = (cellIdx) => {
+                    this.cells[cellIdx].setProperties({'wall': true});
                 }
             }
         }
 
+        
+
+        
+        
+        this.setState({
+            cells: this.cells
+        });
 
         this.cells[cellIdx].setProperties({ 'active': true });
         this.mouseAction(cellIdx);
@@ -91,6 +108,7 @@ export class Grid extends Component {
                                 let cellColorFill = 
                                 this.cells[cellIndex].getProperty('startPosition') ? "blue" :
                                 this.cells[cellIndex].getProperty('destination') ? "red" : 
+                                this.cells[cellIndex].getProperty('wall') ? "grey" :
                                 "none";
 
                                 return (

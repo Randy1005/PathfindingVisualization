@@ -16,13 +16,32 @@ export class Grid extends Component {
 
         this.mouseAction = null;
         this.state = {
-            cells: this.cells
+            cells: this.cells,
+            grid: this
         };
+
 
 
         // assign start position and destination
         this.cells[0].setProperties({'startPosition': true});
         this.cells[945].setProperties({'destination': true});
+
+        
+        this.handleDataUpdate = this.handleDataUpdate.bind(this);
+        this.liftStateToApp();
+    }
+
+    liftStateToApp = () => {
+        this.props.liftstate(this.state);
+    }
+
+    handleDataUpdate() {
+        this.setState({
+            cells: this.cells,
+            grid: this
+        });
+
+        this.liftStateToApp();
     }
 
 
@@ -53,6 +72,7 @@ export class Grid extends Component {
         // not holding down, ignore mouse over for this case
         if (event.buttons !== 1 && event.type !== 'click') {
             this.mouseAction = null;
+            
             return;
         }
 
@@ -79,18 +99,57 @@ export class Grid extends Component {
             }
         }
 
-        
-
-        
-        
-        this.setState({
-            cells: this.cells
-        });
+             
+        this.handleDataUpdate();
 
         this.cells[cellIdx].setProperties({ 'active': true });
         this.mouseAction(cellIdx);
-   
     }
+
+    getNeighborCellIdx(cellIdx, direction) {
+        let neighborCellIdx;
+
+        switch (direction) {
+            case "LEFT":
+                neighborCellIdx = cellIdx - 1;
+                if ((neighborCellIdx+1) % this.colIndices.length === 0) {
+                    // on the left edge
+                    return null;
+                }
+                break;
+            case "UP":
+                neighborCellIdx = cellIdx - this.colIndices.length;
+                break;
+            case "RIGHT":
+                neighborCellIdx = cellIdx + 1;
+                if (neighborCellIdx % this.colIndices.length === 0) {
+                    // on the right edge
+                    return null;
+                }
+                break;
+            case "DOWN":
+                neighborCellIdx = cellIdx + this.colIndices.length;
+                break;
+            default:
+                neighborCellIdx = null;
+            
+        
+        }
+
+        if (neighborCellIdx < 0 || neighborCellIdx >= this.props.rows * this.props.cols)
+            return null;
+
+        return neighborCellIdx;
+    }
+
+    heuristicDistance(cellAIdx, cellBIdx) {
+        let horizontalDist = Math.abs(Math.floor(cellAIdx / this.colIndices.length) - Math.floor(cellBIdx / this.colIndices.length));
+        let verticalDist = Math.abs((cellAIdx % this.colIndices.length) - (cellBIdx % this.colIndices.length));
+        return horizontalDist + verticalDist;
+    }
+
+
+    
 
 
     render() {
@@ -108,7 +167,7 @@ export class Grid extends Component {
                                 let cellColorFill = 
                                 this.cells[cellIndex].getProperty('startPosition') ? "blue" :
                                 this.cells[cellIndex].getProperty('destination') ? "red" : 
-                                this.cells[cellIndex].getProperty('wall') ? "grey" :
+                                this.cells[cellIndex].getProperty('wall') ? "black" :
                                 "none";
 
                                 return (
@@ -132,6 +191,107 @@ export class Grid extends Component {
     }
 };
 
-export class AStarManager {
+export class AStarManager extends Component {
+    constructor(props) {
+        super(props);
+        this.reset();
+    }
+
+    reset() {
+        this.currCellIdx = null;
+        this.destinationCellIdx = null;
+        this.path = [];
+        this.openList = [];
+        this.closedList = [];
+        this.cellFGHValues = {};
+    }
+
+    init() {
+        // openList empty
+        // closed list containing only start cell
+        this.currCellIdx = this.props.gridstate.grid.getCellIdx('startPosition');
+        this.destinationCellIdx = this.props.gridstate.grid.getCellIdx('destination');
+        this.closedList.push(this.currCellIdx);
+        this.cellFGHValues = {
+            [this.currCellIdx]: {
+                g: 0,
+                f: this.props.gridstate.grid.heuristicDistance(this.currCellIdx, this.destinationCellIdx)
+            }
+        };
+    }
+
+    run() {
+        this.init();
+
+        while (!this.isDestination()) {
+            let neighborDirections = ['LEFT', 'UP', 'RIGHT', 'DOWN'];
+
+            neighborDirections.forEach((dir) => {
+                let neighborCellIdx = this.props.gridstate.grid.getNeighborCellIdx(this.currCellIdx, dir);
+
+                if (neighborCellIdx == null || this.props.gridstate.cells[neighborCellIdx].getProperty('wall')) {
+                    return;
+                }
+
+
+                
+                // not yet visited
+                if (this.closedList.indexOf(neighborCellIdx) === -1) {
+                    // add to openList first
+                    if (this.openList.indexOf(neighborCellIdx) === -1) {
+                        this.openList.push(neighborCellIdx);
+                    }
+
+                    // calculate F, G values
+                    let neighborCellG = this.cellFGHValues[this.currCellIdx].g + 1;
+                    let neighborCellF = this.props.gridstate.grid.heuristicDistance(neighborCellIdx, this.destinationCellIdx) + neighborCellG;
+
+                    // update F, G values
+                    if (this.cellFGHValues[neighborCellIdx] === undefined || neighborCellG < this.cellFGHValues[neighborCellIdx].g) {
+                        this.cellFGHValues[neighborCellIdx] = {
+                            g: neighborCellG,
+                            f: neighborCellF,
+                            from: this.currCellIdx
+                        };
+                    }
+                }
+
+                // start choosing the best neighbor
+                let lowestCostNeighbor = null;
+                for (let i in this.openList) {
+                    let openCell = this.openList[i];
+                    if (lowestCostNeighbor == null || this.cellFGHValues[openCell].f < this.cellFGHValues[lowestCostNeighbor].f) {
+                        lowestCostNeighbor = openCell;
+                    }
+                }
+
+                this.currCellIdx = lowestCostNeighbor;
+                this.closedList.push(this.currCellIdx);
+                let index = this.openList.indexOf(this.currCellIdx);
+                this.openList.splice(index, 1);
+
+            });
+
+        }
+
+
+    }
+
+    isDestination() {
+        if (this.currCellIdx === this.destinationCellIdx) {
+            let pathCellIdx = this.currCellIdx;
+            while (this.cellFGHValues[pathCellIdx].from) {
+                pathCellIdx = this.cellFGHValues[pathCellIdx].from;
+                this.path.push(pathCellIdx);
+            }
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    render() {
+        return null;
+    }
 
 };

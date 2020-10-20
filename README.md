@@ -1,2 +1,2 @@
 # PathfindingVisualization
-React App hosted at https://randy1005.github.io/PathfindingVisualization/
+See the other repo "react-pathfinder"

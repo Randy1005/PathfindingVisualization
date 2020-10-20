@@ -168,6 +168,7 @@ export class Grid extends Component {
                                 this.cells[cellIndex].getProperty('startPosition') ? "blue" :
                                 this.cells[cellIndex].getProperty('destination') ? "red" : 
                                 this.cells[cellIndex].getProperty('wall') ? "black" :
+                                this.cells[cellIndex].getProperty('path') ? "grey":
                                 "none";
 
                                 return (
@@ -194,16 +195,24 @@ export class Grid extends Component {
 export class AStarManager extends Component {
     constructor(props) {
         super(props);
-        this.reset();
     }
 
     reset() {
         this.currCellIdx = null;
         this.destinationCellIdx = null;
-        this.path = [];
         this.openList = [];
         this.closedList = [];
         this.cellFGHValues = {};
+
+        if (this.path.length != 0) {
+            for (let i in this.path) {
+                this.props.gridstate.grid.cells[this.path[i]].removeProperty(['path']);
+            }
+            this.path = [];
+        }
+
+        this.props.gridstate.grid.handleDataUpdate();
+
     }
 
     init() {
@@ -211,84 +220,87 @@ export class AStarManager extends Component {
         // closed list containing only start cell
         this.currCellIdx = this.props.gridstate.grid.getCellIdx('startPosition');
         this.destinationCellIdx = this.props.gridstate.grid.getCellIdx('destination');
-        this.closedList.push(this.currCellIdx);
+        this.closedList = [this.currCellIdx];
         this.cellFGHValues = {
             [this.currCellIdx]: {
                 g: 0,
                 f: this.props.gridstate.grid.heuristicDistance(this.currCellIdx, this.destinationCellIdx)
             }
         };
+
+        this.path = [];
+        this.openList = [];
     }
 
     run() {
         this.init();
-
-        while (!this.isDestination()) {
-            let neighborDirections = ['LEFT', 'UP', 'RIGHT', 'DOWN'];
-
-            neighborDirections.forEach((dir) => {
-                let neighborCellIdx = this.props.gridstate.grid.getNeighborCellIdx(this.currCellIdx, dir);
-
-                if (neighborCellIdx == null || this.props.gridstate.cells[neighborCellIdx].getProperty('wall')) {
-                    return;
-                }
-
-
-                
-                // not yet visited
-                if (this.closedList.indexOf(neighborCellIdx) === -1) {
-                    // add to openList first
-                    if (this.openList.indexOf(neighborCellIdx) === -1) {
-                        this.openList.push(neighborCellIdx);
-                    }
-
-                    // calculate F, G values
-                    let neighborCellG = this.cellFGHValues[this.currCellIdx].g + 1;
-                    let neighborCellF = this.props.gridstate.grid.heuristicDistance(neighborCellIdx, this.destinationCellIdx) + neighborCellG;
-
-                    // update F, G values
-                    if (this.cellFGHValues[neighborCellIdx] === undefined || neighborCellG < this.cellFGHValues[neighborCellIdx].g) {
-                        this.cellFGHValues[neighborCellIdx] = {
-                            g: neighborCellG,
-                            f: neighborCellF,
-                            from: this.currCellIdx
-                        };
-                    }
-                }
-
-                // start choosing the best neighbor
-                let lowestCostNeighbor = null;
-                for (let i in this.openList) {
-                    let openCell = this.openList[i];
-                    if (lowestCostNeighbor == null || this.cellFGHValues[openCell].f < this.cellFGHValues[lowestCostNeighbor].f) {
-                        lowestCostNeighbor = openCell;
-                    }
-                }
-
-                this.currCellIdx = lowestCostNeighbor;
-                this.closedList.push(this.currCellIdx);
-                let index = this.openList.indexOf(this.currCellIdx);
-                this.openList.splice(index, 1);
-
-            });
-
+        while (this.currCellIdx !== this.destinationCellIdx) {
+            this.step();
         }
 
-
-    }
-
-    isDestination() {
-        if (this.currCellIdx === this.destinationCellIdx) {
-            let pathCellIdx = this.currCellIdx;
-            while (this.cellFGHValues[pathCellIdx].from) {
-                pathCellIdx = this.cellFGHValues[pathCellIdx].from;
-                this.path.push(pathCellIdx);
+        // search ended, get the path
+        if (this.currCellIdx != null) {
+            let pathCell = this.currCellIdx;
+            while (this.cellFGHValues[pathCell].from) {
+                pathCell = this.cellFGHValues[pathCell].from;
+                this.path.push(pathCell);
+                this.props.gridstate.grid.cells[pathCell].setProperties({'path': true});
             }
-            return true;
-        } else {
-            return false;
         }
+
+        this.props.gridstate.grid.handleDataUpdate();
+
+
     }
+
+    step() {
+        let neighborDirections = ['LEFT', 'UP', 'RIGHT', 'DOWN'];
+        
+        neighborDirections.forEach((dir) => {
+            let neighborCellIdx = this.props.gridstate.grid.getNeighborCellIdx(this.currCellIdx, dir);
+
+            if (neighborCellIdx == null || this.props.gridstate.cells[neighborCellIdx].getProperty('wall')) {
+                return;
+            }
+
+            // not yet visited
+            if (this.closedList.indexOf(neighborCellIdx) === -1) {
+                // add to openList first
+                if (this.openList.indexOf(neighborCellIdx) === -1) {
+                    this.openList.push(neighborCellIdx);
+                }
+
+                // calculate F, G values
+                let neighborCellG = this.cellFGHValues[this.currCellIdx].g + 1;
+                let neighborCellF = this.props.gridstate.grid.heuristicDistance(neighborCellIdx, this.destinationCellIdx) + neighborCellG;
+
+                // update F, G values
+                if (this.cellFGHValues[neighborCellIdx] === undefined || neighborCellG < this.cellFGHValues[neighborCellIdx].g) {
+                    this.cellFGHValues[neighborCellIdx] = {
+                        g: neighborCellG,
+                        f: neighborCellF,
+                        from: this.currCellIdx
+                    };
+                }
+            }
+
+        }); 
+
+        let lowestCostNeighbor = null;
+        for (let i in this.openList) {
+            let openCell = this.openList[i];
+            if (lowestCostNeighbor == null || this.cellFGHValues[openCell].f < this.cellFGHValues[lowestCostNeighbor].f) {
+                lowestCostNeighbor = openCell;
+            }
+        }
+
+        this.currCellIdx = lowestCostNeighbor;
+        // finished with this cell, push to closedlist, exclude from openlist
+        this.closedList.push(this.currCellIdx);
+        let opListIdx = this.openList.indexOf(this.currCellIdx);
+        this.openList.splice(opListIdx, 1);
+    }
+
 
     render() {
         return null;

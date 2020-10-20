@@ -25,6 +25,11 @@ class App extends Component {
         this.refs.manager.run();
     }
 
+    resetAstar = () => {
+        this.refs.manager.reset();
+    }
+
+
     render() {
         
         return (
@@ -34,10 +39,9 @@ class App extends Component {
                         <Grid rows={20} cols={50} liftstate={this.getStateFromGrid}></Grid>
                     </div>
                     <button onClick={this.runAstar}>RUN</button>
-                    <button>RESET</button>
+                    <button onClick={this.resetAstar}>RESET</button>
                     <div> <AStarManager gridstate={this.state.grid} ref="manager"/> </div>
-                </div>
-                
+                </div>   
             </React.Fragment>
             
 

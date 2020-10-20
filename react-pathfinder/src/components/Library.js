@@ -204,14 +204,11 @@ export class AStarManager extends Component {
         this.closedList = [];
         this.cellFGHValues = {};
 
-        if (this.path.length != 0) {
-            for (let i in this.path) {
-                this.props.gridstate.grid.cells[this.path[i]].removeProperty(['path']);
-            }
-            this.path = [];
-        }
+        this.props.gridstate.grid.removeFromCells(['path']);
+        this.props.gridstate.grid.removeFromCells(['wall']);
 
         this.props.gridstate.grid.handleDataUpdate();
+        this.unReachable = false;
 
     }
 
@@ -230,11 +227,17 @@ export class AStarManager extends Component {
 
         this.path = [];
         this.openList = [];
+        this.unReachable = false;
     }
 
     run() {
         this.init();
         while (this.currCellIdx !== this.destinationCellIdx) {
+            if (this.unReachable) {
+                alert("Destination Not Reachable.");
+                break;
+            }
+
             this.step();
         }
 
@@ -299,6 +302,10 @@ export class AStarManager extends Component {
         this.closedList.push(this.currCellIdx);
         let opListIdx = this.openList.indexOf(this.currCellIdx);
         this.openList.splice(opListIdx, 1);
+
+        if (this.openList.length === 0)
+            this.unReachable = true;
+            
     }
 
 

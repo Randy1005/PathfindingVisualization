@@ -41,6 +41,8 @@ class App extends Component {
                     <button onClick={this.runAstar}>RUN</button>
                     <button onClick={this.resetAstar}>RESET</button>
                     <div> <AStarManager gridstate={this.state.grid} ref="manager"/> </div>
+                    <h5>Drag start cell (blue) or destination cell (red)</h5>
+                    <h5>Click or hold to add walls</h5>
                 </div>   
             </React.Fragment>
             
